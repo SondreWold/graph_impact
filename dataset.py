@@ -105,5 +105,4 @@ class ExplaGraphs(Dataset):
         return len(self.input_ids)
     
     def __getitem__(self, idx):
-        print(self.premises[idx], self.arguments[idx], self.explanations[idx], self.labels[idx])
         return torch.LongTensor(self.input_ids[idx]), torch.BoolTensor(self.attention_masks[idx]), self.label_converter[self.labels[idx]]
