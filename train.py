@@ -60,6 +60,12 @@ def parse_args():
     action='store_true',
     help="Trigger graph mode",
     )
+
+    parser.add_argument(
+    "--test",
+    action='store_true',
+    help="Trigger test eval",
+    )
     
     parser.add_argument(
     "--lr",
@@ -75,19 +81,15 @@ def parse_args():
     help="The rng seed",
     )
 
-
-
     args = parser.parse_args()
 
     return args
-
-
 
 def main(args):
     logging.info(f"Initialised")
     model_name = args.model
     train = ExplaGraphs(model_name, split="train", use_graphs=args.use_graphs)
-    val = ExplaGraphs(model_name, split="dev", use_graphs=args.use_graphs)
+    val = ExplaGraphs(model_name, split="val", use_graphs=args.use_graphs)
     train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
 
@@ -147,7 +149,29 @@ def main(args):
             wandb.log({"train_loss_epoch": t_l})
             wandb.log({"val_loss": v_l})
             wandb.log({"accuracy": accuracy})
-
+    
+    if args.test:
+        test = ExplaGraphs(model_name, split="test", use_graphs=args.use_graphs)
+        test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=True)
+        model.eval()
+        with torch.no_grad():
+            correct = 0
+            n = 0
+            for i, (input_ids, attention_masks, y) in enumerate(tqdm(test_loader)):
+                input_ids = input_ids.to(device)
+                attention_masks = attention_masks.to(device)
+                y = torch.LongTensor(y)
+                y = y.to(device)
+                out = model(input_ids=input_ids, attention_mask=attention_masks).logits
+                y_hat = nn.Softmax(out)
+                y_hat = (torch.argmax(out, dim=1))
+                correct += (y_hat == y).float().sum()
+                n += 1*args.batch_size
+            
+            test_accuracy = correct / n
+        
+        logging.info(f" Test. accuracy: {test_accuracy}")
+    
 
 if __name__ == "__main__":
     args = parse_args()
