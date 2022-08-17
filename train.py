@@ -177,6 +177,9 @@ def main(args):
             test_accuracy = correct / n
         
         logging.info(f" Test. accuracy: {test_accuracy}")
+        if not args.debug:
+            wandb.log({"test_score": test_accuracy})
+        
     
 
 if __name__ == "__main__":
