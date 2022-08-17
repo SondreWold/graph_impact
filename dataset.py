@@ -5,6 +5,7 @@ import torch
 from transformers import GPT2Config, GPT2Tokenizer, GPT2Model
 import torch.nn as nn
 import torch.nn.functional as F
+from tqdm import tqdm
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 # Define the generator model from Wang et al (2020)
 class Generator(nn.Module):
@@ -74,9 +75,12 @@ class ExplaGraphs(Dataset):
         self.PG = PathGenerator()
         if use_pg:
             print("Generating paths...")
-            self.explanations = [self.get_path(x) for x in self.explanations]
+            #self.explanations = [self.get_path(x) for x in self.explanations]
+            for i, exp in enumerate(tqdm(self.explanations)):
+                self.explanations[i] = self.get_path(exp)
         else:
             self.explanations = [self.clean_string(x) for x in self.explanations]
+            
         if use_graphs == True:
             features = [prem + " [SEP] " + arg + " [SEP] " + exp for prem,arg,exp in zip(self.premises, self.arguments, self.explanations)]
         else:
