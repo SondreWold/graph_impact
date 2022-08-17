@@ -192,7 +192,8 @@ if __name__ == "__main__":
         "batch_size": args.batch_size,
         "weight_decay": args.weight_decay,
         "model_name": args.model,
-        "uses_explanation": args.use_graphs
+        "uses_explanation": args.use_graphs,
+        "uses_generated_paths": args.use_pg
     }
 
     if not args.debug:
