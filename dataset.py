@@ -88,9 +88,9 @@ class ExplaGraphs(Dataset):
             self.explanations = self.generated_explanations
             
         if use_graphs == True:
-            features = [prem + " [SEP] " + arg + " [SEP] " + exp for prem,arg,exp in zip(self.premises, self.arguments, self.explanations)]
+            features = [prem + " " + self.tokenizer.sep_token + " " + arg + " " + self.tokenizer.sep_token + " " + exp for prem,arg,exp in zip(self.premises, self.arguments, self.explanations)]
         else:
-            features = [prem + " [SEP] " + arg for prem,arg in zip(self.premises, self.arguments)]
+            features = [prem + " " + self.tokenizer.sep_token + " "+ arg for prem,arg in zip(self.premises, self.arguments)]
 
         encodings = self.tokenizer(features, truncation=True, padding=True)
         self.input_ids, self.attention_masks = encodings["input_ids"], encodings["attention_mask"]
