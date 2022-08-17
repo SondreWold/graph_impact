@@ -157,7 +157,7 @@ def main(args):
             wandb.log({"accuracy": accuracy})
     
     if args.test:
-        test = ExplaGraphs(model_name, split="test", use_graphs=args.use_graphs)
+        test = ExplaGraphs(model_name, split="test", use_graphs=args.use_graphs, use_pg=args.use_pg)
         test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=True)
         model.eval()
         with torch.no_grad():

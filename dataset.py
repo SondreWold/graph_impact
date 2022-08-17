@@ -65,21 +65,27 @@ class PathGenerator():
 
 
 class ExplaGraphs(Dataset):
-    def __init__(self, model_name, split="train", use_graphs=False, use_pg=False):
+    def __init__(self, model_name, split="train", use_graphs=False, use_pg=False, generate_pg=False):
         print(f"Use graph explanations = {use_graphs}, use path generator = {use_pg}")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         df = pd.read_csv(f"./data/{split}.tsv", sep="\t", header=0, index_col=0)
-        self.premises, self.arguments, self.labels, self.explanations = df.to_numpy().T
+        self.premises, self.arguments, self.labels, self.explanations, self.generated_explanations = df.to_numpy().T
         self.label_converter = {"counter": 0, "support": 1}
         self.label_inverter = {0: "counter", 1: "support"}
         self.PG = PathGenerator()
-        if use_pg:
+
+        ''' If you have the original data files and need to generate the PG paths. 
+        if generate_pg:
             print("Generating paths...")
             #self.explanations = [self.get_path(x) for x in self.explanations]
             for i, exp in enumerate(tqdm(self.explanations)):
                 self.explanations[i] = self.get_path(exp)
         else:
             self.explanations = [self.clean_string(x) for x in self.explanations]
+        '''
+
+        if use_pg == True:
+            self.explanations = self.generated_explanations
             
         if use_graphs == True:
             features = [prem + " [SEP] " + arg + " [SEP] " + exp for prem,arg,exp in zip(self.premises, self.arguments, self.explanations)]
