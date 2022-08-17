@@ -72,7 +72,6 @@ class ExplaGraphs(Dataset):
         self.premises, self.arguments, self.labels, self.explanations, self.generated_explanations = df.to_numpy().T
         self.label_converter = {"counter": 0, "support": 1}
         self.label_inverter = {0: "counter", 1: "support"}
-        self.PG = PathGenerator()
 
         ''' If you have the original data files and need to generate the PG paths. 
         if generate_pg:
@@ -85,6 +84,7 @@ class ExplaGraphs(Dataset):
         '''
 
         if use_pg == True:
+            self.PG = PathGenerator()
             self.explanations = self.generated_explanations
             
         if use_graphs == True:
