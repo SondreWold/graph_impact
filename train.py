@@ -157,7 +157,7 @@ def main(args):
             wandb.log({"accuracy": accuracy})
     
     if args.test:
-        test = ExplaGraphs(model_name, split="test", use_graphs=args.use_graphs, use_pg=args.use_pg)
+        test = ExplaGraphs(model_name, split="test", use_graphs=args.use_graphs, use_pg=args.pg)
         test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=True)
         model.eval()
         with torch.no_grad():
@@ -193,7 +193,7 @@ if __name__ == "__main__":
         "weight_decay": args.weight_decay,
         "model_name": args.model,
         "uses_explanation": args.use_graphs,
-        "uses_generated_paths": args.use_pg
+        "uses_generated_paths": args.pg
     }
 
     if not args.debug:
