@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 
 
-/data/*
 /wandb/*
 # C extensions
 *.so
