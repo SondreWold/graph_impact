@@ -93,7 +93,7 @@ def main(args):
     train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
 
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2).to(device)
 
     criterion = CrossEntropyLoss()
 
