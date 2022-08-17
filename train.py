@@ -202,17 +202,17 @@ if __name__ == "__main__":
         "uses_generated_paths": args.pg
     }
 
+    set_seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+    
     if not args.debug:
         wandb.init(project="graph_impact", entity="sondrewo", config=config)
 
     main(args)
     
-    if args.seed is not None:
-        set_seed(args.seed)
-        torch.manual_seed(args.seed)
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-        np.random.seed(args.seed)
-        random.seed(42)
-        torch.backends.cudnn.benchmark = False
-        torch.backends.cudnn.deterministic = True
