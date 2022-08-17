@@ -13,7 +13,7 @@ from modeling import SequenceModel
 from dataset import ExplaGraphs
 
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 torch.backends.cuda.matmul.allow_tf32 = True #(RTX3090 and A100 GPU only)
 
 def parse_args():
@@ -66,6 +66,12 @@ def parse_args():
     action='store_true',
     help="Trigger test eval",
     )
+
+    parser.add_argument(
+    "--pg",
+    action='store_true',
+    help="Trigger PG mode",
+    )
     
     parser.add_argument(
     "--lr",
@@ -88,8 +94,8 @@ def parse_args():
 def main(args):
     logging.info(f"Initialised")
     model_name = args.model
-    train = ExplaGraphs(model_name, split="train", use_graphs=args.use_graphs)
-    val = ExplaGraphs(model_name, split="val", use_graphs=args.use_graphs)
+    train = ExplaGraphs(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg)
+    val = ExplaGraphs(model_name, split="val", use_graphs=args.use_graphs, use_pg=args.pg)
     train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
 
