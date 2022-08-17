@@ -75,6 +75,7 @@ class ExplaGraphs(Dataset):
 
         ''' If you have the original data files and need to generate the PG paths. 
         if generate_pg:
+            self.PG = PathGenerator()
             print("Generating paths...")
             #self.explanations = [self.get_path(x) for x in self.explanations]
             for i, exp in enumerate(tqdm(self.explanations)):
@@ -84,7 +85,6 @@ class ExplaGraphs(Dataset):
         '''
 
         if use_pg == True:
-            self.PG = PathGenerator()
             self.explanations = self.generated_explanations
             
         if use_graphs == True:
