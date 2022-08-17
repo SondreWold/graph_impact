@@ -7,7 +7,7 @@ class ExplaGraphs(Dataset):
     def __init__(self, model_name, split="train", use_graphs=False):
         print(f"Use graph explanations = {use_graphs}")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        df = pd.read_csv(f"./data/{split}.tsv", sep="\t")
+        df = pd.read_csv(f"./data/{split}.tsv", sep="\t", header=0, index_col=0)
         premises, arguments, self.labels, explanations = df.to_numpy().T
         self.label_converter = {"counter": 0, "support": 1}
         self.label_inverter = {0: "counter", 1: "support"}
