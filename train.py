@@ -11,6 +11,9 @@ import os
 import wandb
 from modeling import SequenceModel
 from dataset import ExplaGraphs
+import os
+import random
+import numpy as np
 
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -206,3 +209,10 @@ if __name__ == "__main__":
     
     if args.seed is not None:
         set_seed(args.seed)
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        np.random.seed(args.seed)
+        random.seed(42)
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
