@@ -75,6 +75,12 @@ def parse_args():
     action='store_true',
     help="Trigger PG mode",
     )
+
+    parser.add_argument(
+    "--rg",
+    action='store_true',
+    help="Trigger rand g mode",
+    )
     
     parser.add_argument(
     "--lr",
@@ -97,8 +103,8 @@ def parse_args():
 def main(args):
     logging.info(f"Initialised")
     model_name = args.model
-    train = ExplaGraphs(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg)
-    val = ExplaGraphs(model_name, split="val", use_graphs=args.use_graphs, use_pg=args.pg)
+    train = ExplaGraphs(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
+    val = ExplaGraphs(model_name, split="val", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
     train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
 
@@ -178,7 +184,7 @@ def main(args):
         
     
     if args.test:
-        test = ExplaGraphs(model_name, split="test", use_graphs=args.use_graphs, use_pg=args.pg)
+        test = ExplaGraphs(model_name, split="test", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
         test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=True)
         model.eval()
         with torch.no_grad():
@@ -218,9 +224,13 @@ if __name__ == "__main__":
         "model_name": args.model,
         "uses_explanation": args.use_graphs,
         "uses_generated_paths": args.pg,
+        "uses_random_paths": args.rg,
         "seed": args.seed
 
     }
+    if args.pg and args.rg:
+        logging.info("Cant use RG and PG simoultaniously")
+        exit()
 
     set_seed(args.seed)
     torch.manual_seed(args.seed)

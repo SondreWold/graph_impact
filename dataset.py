@@ -65,11 +65,17 @@ class PathGenerator():
 
 
 class ExplaGraphs(Dataset):
-    def __init__(self, model_name, split="train", use_graphs=False, use_pg=False, generate_pg=False):
+    def __init__(self, model_name, split="train", use_graphs=False, use_pg=False, use_rg=args.rg, generate_pg=False):
         print(f"Use graph explanations = {use_graphs}, use path generator = {use_pg}")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         df = pd.read_csv(f"./data/{split}.tsv", sep="\t", header=0, index_col=0)
-        self.premises, self.arguments, self.labels, self.explanations, self.generated_explanations = df.to_numpy().T
+        self.premises = df["belief"].to_numpy()
+        self.arguments = df["argument"].to_numpy()
+        self.labels = df["label"].to_numpy()
+        self.explanations = df["explanation"].to_numpy()
+        self.generated_explanations = df["generated_explanation"].to_numpy()
+        self.random_explanations = df["random_explanation"].to_numpy()
+
         self.label_converter = {"counter": 0, "support": 1}
         self.label_inverter = {0: "counter", 1: "support"}
 
@@ -86,7 +92,8 @@ class ExplaGraphs(Dataset):
 
         if use_pg == True:
             self.explanations = self.generated_explanations
-            
+        if use_rg == True:
+            self.explanations = self.random_explanations
         if use_graphs == True:
             self.features = [prem + " " + self.tokenizer.sep_token + " " + arg + " " + self.tokenizer.sep_token + " " + self.clean_string(exp) for prem,arg,exp in zip(self.premises, self.arguments, self.explanations)]
         else:
