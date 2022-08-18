@@ -32,9 +32,9 @@ def parse_args():
     
     parser.add_argument(
     "--weight_decay",
-    type=int,
-    default=1e-4,
-    help="The batch size to use during training.",
+    type=float,
+    default=0.0,
+    help="The weight decay to use during training.",
     )
 
     parser.add_argument(
@@ -106,12 +106,18 @@ def main(args):
 
     criterion = CrossEntropyLoss()
 
-    no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
-    grouped_parameters = [
-        {'params': [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)], 'weight_decay': args.weight_decay},
-        {'params': [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0},
+    no_decay = ["bias", "LayerNorm.weight"]
+    optimizer_grouped_parameters = [
+        {
+            "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+            "weight_decay": args.weight_decay,
+        },
+        {
+            "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
+            "weight_decay": 0.0,
+        },
     ]
-    optimizer = AdamW(grouped_parameters, lr=args.lr)
+    optimizer = AdamW(optimizer_grouped_parameters, lr=args.lr)
 
     if args.debug:
         logging.info("Debug mode activated.")
