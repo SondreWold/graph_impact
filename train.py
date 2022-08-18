@@ -124,7 +124,7 @@ def main(args):
         og, dec = train.get_decoded_sample(0)
         logging.info(f"Sample from dataset. Original was: ---- {og} ---- , decoded was ---- {dec} ---- ")
     
-    best_val_loss = 999999
+    best_acc = 0.0
     for epoch in range(args.epochs):
         logging.info(f"Staring training at epoch {epoch}")
         train_loss = 0.0
@@ -165,10 +165,10 @@ def main(args):
 
         t_l = train_loss / len(train_loader)
         v_l = val_loss / len(val_loader)
-        if v_l < best_val_loss:
-            best_val_loss = v_l
+        if accuracy > best_acc:
+            best_acc = accuracy
         else:
-            logging.info(f"Early stopping at epoch {epoch} with best val_loss {best_val_loss} and accuracy {accuracy}")
+            logging.info(f"Early stopping at epoch {epoch} with accuracy {accuracy}")
         logging.info(f"Epoch {epoch}, avg. train loss: {t_l} avg. val loss: {v_l}. Val. accuracy: {accuracy}")
         if not args.debug:
             wandb.log({"train_loss_epoch": t_l})
