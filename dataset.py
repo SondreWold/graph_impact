@@ -88,11 +88,11 @@ class ExplaGraphs(Dataset):
             self.explanations = self.generated_explanations
             
         if use_graphs == True:
-            features = [prem + " " + self.tokenizer.sep_token + " " + arg + " " + self.tokenizer.sep_token + " " + exp for prem,arg,exp in zip(self.premises, self.arguments, self.explanations)]
+            self.features = [prem + " " + self.tokenizer.sep_token + " " + arg + " " + self.tokenizer.sep_token + " " + self.clean_string(exp) for prem,arg,exp in zip(self.premises, self.arguments, self.explanations)]
         else:
-            features = [prem + " " + self.tokenizer.sep_token + " "+ arg for prem,arg in zip(self.premises, self.arguments)]
+            self.features = [prem + " " + self.tokenizer.sep_token + " " + arg for prem,arg in zip(self.premises, self.arguments)]
 
-        encodings = self.tokenizer(features, truncation=True, padding=True)
+        encodings = self.tokenizer(self.features, truncation=True, padding=True)
         self.input_ids, self.attention_masks = encodings["input_ids"], encodings["attention_mask"]
 
     def get_path(self, x):
@@ -102,6 +102,9 @@ class ExplaGraphs(Dataset):
         #print(f"Explanation was: {original_explanation_graph}, head is now {head}, tail is {tail}")
         path = self.PG.connect_entities(head, tail)
         return path
+
+    def get_decoded_sample(self, idx):
+        return self.features[idx], self.tokenizer.decode(self.input_ids[idx])
 
         
     def clean_string(self, x):

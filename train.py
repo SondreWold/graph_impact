@@ -113,6 +113,11 @@ def main(args):
     ]
     optimizer = AdamW(grouped_parameters, lr=args.lr)
 
+    if args.debug:
+        logging.info("Debug mode activated.")
+        og, dec = train.get_decoded_sample(0)
+        logging.info(f"Sample from dataset. Original was: ---- {og} ---- , decoded was ---- {dec} ---- ")
+
     for epoch in range(args.epochs):
         logging.info(f"Staring training at epoch {epoch}")
         train_loss = 0.0
@@ -158,6 +163,7 @@ def main(args):
             wandb.log({"train_loss_epoch": t_l})
             wandb.log({"val_loss": v_l})
             wandb.log({"accuracy": accuracy})
+        
     
     if args.test:
         test = ExplaGraphs(model_name, split="test", use_graphs=args.use_graphs, use_pg=args.pg)
