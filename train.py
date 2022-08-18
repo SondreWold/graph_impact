@@ -3,6 +3,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
 from transformers import AutoTokenizer, set_seed, AutoModelForSequenceClassification, Trainer, TrainingArguments
 from torch.optim import AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.nn import CrossEntropyLoss
 import logging
 import argparse
@@ -124,6 +125,8 @@ def main(args):
         },
     ]
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.lr)
+    steps = args.epochs * len(train_loader)
+    scheduler = CosineAnnealingLR(optimizer, T_max=steps)
 
     if args.debug:
         logging.info("Debug mode activated.")
@@ -145,6 +148,7 @@ def main(args):
             train_loss += loss.item()
             loss.backward()
             optimizer.step()
+            scheduler.step()
             if args.debug:
                 break
 
