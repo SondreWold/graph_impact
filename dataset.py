@@ -66,7 +66,7 @@ class PathGenerator():
 
 class ExplaGraphs(Dataset):
     def __init__(self, model_name, split="train", use_graphs=False, use_pg=False, use_rg=args.rg, generate_pg=False):
-        print(f"Use graph explanations = {use_graphs}, use path generator = {use_pg}")
+        print(f"Use graph explanations = {use_graphs}, use path generator = {use_pg}, use random generator = {use_rg}")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         df = pd.read_csv(f"./data/{split}.tsv", sep="\t", header=0, index_col=0)
         self.premises = df["belief"].to_numpy()
