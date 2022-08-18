@@ -211,7 +211,9 @@ if __name__ == "__main__":
         "weight_decay": args.weight_decay,
         "model_name": args.model,
         "uses_explanation": args.use_graphs,
-        "uses_generated_paths": args.pg
+        "uses_generated_paths": args.pg,
+        "seed": args.seed
+
     }
 
     set_seed(args.seed)
