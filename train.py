@@ -130,6 +130,7 @@ def main(args):
         og, dec = train.get_decoded_sample(0)
         logging.info(f"Sample from dataset. Original was: ---- {og} ---- , decoded was ---- {dec} ---- ")
     
+    patience = 2
     best_acc = 0.0
     for epoch in range(args.epochs):
         logging.info(f"Staring training at epoch {epoch}")
@@ -177,15 +178,23 @@ def main(args):
             wandb.log({"val_loss": v_l})
             wandb.log({"accuracy": accuracy})
         if accuracy > best_acc:
+            patience = 2 #reset patience
             best_acc = accuracy
+            torch.save({
+            'model_state_dict': model.state_dict(),
+            }, "./models/best_model.pt")
         else:
-            logging.info(f"Early stopping at epoch {epoch} with accuracy {accuracy}")
-            break
+            patience -= 1
+            if patience == 0:
+                logging.info(f"Early stopping at epoch {epoch} with accuracy {accuracy}")
+                break
         
     
     if args.test:
         test = ExplaGraphs(model_name, split="test", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
         test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=True)
+        checkpoint = torch.load("./models/best_model.pt")
+        model.load_state_dict(checkpoint['model_state_dict'])
         model.eval()
         with torch.no_grad():
             correct = 0
