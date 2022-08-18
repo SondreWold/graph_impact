@@ -165,15 +165,16 @@ def main(args):
 
         t_l = train_loss / len(train_loader)
         v_l = val_loss / len(val_loader)
-        if accuracy > best_acc:
-            best_acc = accuracy
-        else:
-            logging.info(f"Early stopping at epoch {epoch} with accuracy {accuracy}")
         logging.info(f"Epoch {epoch}, avg. train loss: {t_l} avg. val loss: {v_l}. Val. accuracy: {accuracy}")
         if not args.debug:
             wandb.log({"train_loss_epoch": t_l})
             wandb.log({"val_loss": v_l})
             wandb.log({"accuracy": accuracy})
+        if accuracy > best_acc:
+            best_acc = accuracy
+        else:
+            logging.info(f"Early stopping at epoch {epoch} with accuracy {accuracy}")
+            break
         
     
     if args.test:
