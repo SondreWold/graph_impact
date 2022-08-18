@@ -17,7 +17,7 @@ import numpy as np
 
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-torch.backends.cuda.matmul.allow_tf32 = True #(RTX3090 and A100 GPU only)
+#torch.backends.cuda.matmul.allow_tf32 = True #(RTX3090 and A100 GPU only)
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -102,7 +102,7 @@ def main(args):
     train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
 
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2).to(device)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
 
     criterion = CrossEntropyLoss()
 
@@ -123,7 +123,8 @@ def main(args):
         logging.info("Debug mode activated.")
         og, dec = train.get_decoded_sample(0)
         logging.info(f"Sample from dataset. Original was: ---- {og} ---- , decoded was ---- {dec} ---- ")
-
+    
+    best_val_loss = 999999
     for epoch in range(args.epochs):
         logging.info(f"Staring training at epoch {epoch}")
         train_loss = 0.0
@@ -164,6 +165,10 @@ def main(args):
 
         t_l = train_loss / len(train_loader)
         v_l = val_loss / len(val_loader)
+        if v_l < best_val_loss:
+            best_val_loss = v_l
+        else:
+            logging.info(f"Early stopping at epoch {epoch} with best val_loss {best_val_loss} and accuracy {accuracy}")
         logging.info(f"Epoch {epoch}, avg. train loss: {t_l} avg. val loss: {v_l}. Val. accuracy: {accuracy}")
         if not args.debug:
             wandb.log({"train_loss_epoch": t_l})
