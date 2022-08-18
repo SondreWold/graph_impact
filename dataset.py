@@ -75,7 +75,7 @@ class ExplaGraphs(Dataset):
         self.explanations = df["explanation"].to_numpy()
         self.generated_explanations = df["generated_explanation"].to_numpy()
         self.random_explanations = df["random_explanation"]
-        self.random_explanations = random_explanations.fillna('').to_numpy() #replace no path found with empty path
+        self.random_explanations = self.random_explanations.fillna('').to_numpy() #replace no path found with empty path
 
         self.label_converter = {"counter": 0, "support": 1}
         self.label_inverter = {0: "counter", 1: "support"}
