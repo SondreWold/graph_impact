@@ -151,6 +151,8 @@ def main(args):
             scheduler.step()
             if args.debug:
                 break
+            else:
+                wandb.log({"train_loss_batch": train_loss/args.batch_size})
 
         model.eval()
         with torch.no_grad():
