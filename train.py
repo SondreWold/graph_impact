@@ -151,7 +151,6 @@ def main(args):
             loss.backward()
             optimizer.step()
             scheduler.step()
-            count += 1
             if args.debug:
                 break
             else:
@@ -247,6 +246,9 @@ if __name__ == "__main__":
         "seed": args.seed
 
     }
+
+
+
     if args.pg and args.rg:
         logging.info("Cant use RG and PG simoultaniously")
         exit()
