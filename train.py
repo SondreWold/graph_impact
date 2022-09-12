@@ -135,10 +135,11 @@ def main(args):
     
     patience = 2
     best_acc = 0.0
+    train_loss = 0.0
     for epoch in range(args.epochs):
         logging.info(f"Staring training at epoch {epoch}")
-        train_loss = 0.0
         model.train()
+
         for i, (input_ids, attention_masks, y) in enumerate(tqdm(train_loader)):
             y = torch.LongTensor(y)
             optimizer.zero_grad()
@@ -152,7 +153,7 @@ def main(args):
             if args.debug:
                 break
             else:
-                wandb.log({"train_loss_batch": train_loss/args.batch_size})
+                wandb.log({"train_loss_batch": train_loss*args.batch_size})
 
         model.eval()
         with torch.no_grad():
