@@ -6,6 +6,7 @@ from transformers import GPT2Config, GPT2Tokenizer, GPT2Model
 import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import tqdm
+import json
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 # Define the generator model from Wang et al (2020)
 class Generator(nn.Module):
@@ -68,28 +69,17 @@ class ExplaGraphs(Dataset):
     def __init__(self, model_name, split="train", use_graphs=False, use_pg=False, use_rg=False, generate_pg=False):
         print(f"Use graph explanations = {use_graphs}, use path generator = {use_pg}, use random generator = {use_rg}")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        df = pd.read_csv(f"./data/{split}.tsv", sep="\t", header=0, index_col=0)
+        df = pd.read_csv(f"./data/explagraphs/{split}.tsv", sep="\t", header=0, index_col=0)
         self.premises = df["belief"].to_numpy()
         self.arguments = df["argument"].to_numpy()
         self.labels = df["label"].to_numpy()
-        self.explanations = df["explanation"].to_numpy()
-        self.generated_explanations = df["generated_explanation"].to_numpy()
-        self.random_explanations = df["random_explanation"]
+        self.explanations = df["gold_graph"].to_numpy()
+        self.generated_explanations = df["generated_graph"].to_numpy()
+        self.random_explanations = df["retrieved_graph"]
         self.random_explanations = self.random_explanations.fillna('').to_numpy() #replace no path found with empty path
 
         self.label_converter = {"counter": 0, "support": 1}
         self.label_inverter = {0: "counter", 1: "support"}
-
-        ''' If you have the original data files and need to generate the PG paths. 
-        if generate_pg:
-            self.PG = PathGenerator()
-            print("Generating paths...")
-            #self.explanations = [self.get_path(x) for x in self.explanations]
-            for i, exp in enumerate(tqdm(self.explanations)):
-                self.explanations[i] = self.get_path(exp)
-        else:
-            self.explanations = [self.clean_string(x) for x in self.explanations]
-        '''
 
         if use_pg == True:
             self.explanations = self.generated_explanations
@@ -116,11 +106,14 @@ class ExplaGraphs(Dataset):
 
         
     def clean_string(self, x):
-        x = x.replace(")(", ", ")
-        return x.replace("(", "").replace(")","").replace(";", "")
-
-    def use_path_generator(self, graph_to_replace):
-        pass
+        res = eval(x)
+        flat_list = [item for sublist in list(res) for item in sublist]
+        path = " ".join(flat_list)
+        #x = x.replace(")(", ", ")
+        #x = x.replace("[", "")
+        #x = x.replace("]", "")
+        #x = x.replace("(", "").replace(")","").replace(";", "") 
+        return path
     
     def __len__(self):
         return len(self.input_ids)
