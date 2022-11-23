@@ -111,6 +111,20 @@ def main(args):
     train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
 
+
+    wandb.log({"batch_size": args.batch_size})
+    wandb.log({"epochs": args.lr})
+    wandb.log({"learning_rate": args.lr})
+    wandb.log({"seed": args.seed})
+    wandb.log({"uses_graph": args.use_graphs})
+    wandb.log({"uses_generated": args.pg})
+    wandb.log({"uses_retrieved": args.rg})
+
+    decoded_sample = train.get_decoded_sample(10)
+    logging.info(f"Example sentence: {decoded_sample}")
+
+    
+
     model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
 
     criterion = CrossEntropyLoss()

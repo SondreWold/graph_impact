@@ -8,62 +8,6 @@ import torch.nn.functional as F
 from tqdm import tqdm
 import json
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-# Define the generator model from Wang et al (2020)
-class Generator(nn.Module):
-    def __init__(self, gpt, config, max_len=31):
-        super(Generator, self).__init__()
-        self.gpt = gpt
-        self.config = config
-        self.max_len = max_len
-        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
-
-    def forward(self, inputs):
-        # input: [batch, seq]
-        context_len = inputs.size(1)
-        generated = inputs
-        next_token = inputs
-        past = None
-        with torch.no_grad():
-            for step in range(self.max_len):
-                outputs = self.gpt(next_token, past_key_values=past)
-                hidden = outputs[0][:, -1]
-                past = outputs[1]
-                next_token_logits = self.lm_head(hidden)
-                next_logits, next_token = next_token_logits.topk(k=1, dim=1)
-                generated = torch.cat((generated, next_token), dim=1)
-        return generated
-
-class PathGenerator():
-    def __init__(self):
-        print("Load Path Generator..")
-        lm_type = 'gpt2'
-        config = GPT2Config.from_pretrained(lm_type)
-        self.tokenizer = GPT2Tokenizer.from_pretrained(lm_type)
-        self.tokenizer.add_tokens(['<PAD>'])
-        self.tokenizer.add_tokens(['<SEP>'])
-        self.tokenizer.add_tokens(['<END>'])
-        gpt = GPT2Model.from_pretrained(lm_type)
-        config.vocab_size = len(self.tokenizer)
-        gpt.resize_token_embeddings(len(self.tokenizer))
-        pretrain_generator_ckpt = "./pg/commonsense-path-generator.ckpt"
-        self.generator = Generator(gpt, config)
-        self.generator.load_state_dict(torch.load(pretrain_generator_ckpt, map_location=torch.device(device)), strict=False)
-
-    def prepare_input(self, head_entity, tail_entity, input_len=16):
-        head_entity = head_entity.replace('_', ' ')
-        tail_entity = tail_entity.replace('_', ' ')
-        input_token = tail_entity + '<SEP>' + head_entity
-        input_id = self.tokenizer.encode(input_token, add_special_tokens=False)[:input_len]
-        input_id += [self.tokenizer.convert_tokens_to_ids('<PAD>')] * (input_len - len(input_id))
-        return torch.tensor([input_id], dtype=torch.long)
-
-    def connect_entities(self, head_entity, tail_entity):
-        gen_input = self.prepare_input(head_entity, tail_entity)
-        gen_output = self.generator(gen_input)
-        path = self.tokenizer.decode(gen_output[0].tolist(), skip_special_tokens=True)
-        path = ' '.join(path.replace('<PAD>', '').split())
-        return path[path.index('<SEP>')+6:]
-
 
 class ExplaGraphs(Dataset):
     def __init__(self, model_name, split="train", use_graphs=False, use_pg=False, use_rg=False, generate_pg=False):
@@ -77,9 +21,13 @@ class ExplaGraphs(Dataset):
         self.generated_explanations = df["generated_graph"].to_numpy()
         self.random_explanations = df["retrieved_graph"]
         self.random_explanations = self.random_explanations.fillna('').to_numpy() #replace no path found with empty path
-
+        self.r2t = None
+        with open('relation2text.json') as json_file:
+            r2t = json.load(json_file)
+            self.r2t =  {k.lower(): v for k, v in r2t.items()}
         self.label_converter = {"counter": 0, "support": 1}
         self.label_inverter = {0: "counter", 1: "support"}
+        self.skipped_examples = 0
 
         if use_pg == True:
             self.explanations = self.generated_explanations
@@ -93,26 +41,25 @@ class ExplaGraphs(Dataset):
         encodings = self.tokenizer(self.features, truncation=True, padding=True)
         self.input_ids, self.attention_masks = encodings["input_ids"], encodings["attention_mask"]
 
-    def get_path(self, x):
-        original_explanation_graph = x.split(";")
-        head = self.clean_string(original_explanation_graph[0])
-        tail = self.clean_string(original_explanation_graph[-1])
-        #print(f"Explanation was: {original_explanation_graph}, head is now {head}, tail is {tail}")
-        path = self.PG.connect_entities(head, tail)
-        return path
+        print(f"Skipped examples: {self.skipped_examples}")
 
     def get_decoded_sample(self, idx):
-        return self.features[idx], self.tokenizer.decode(self.input_ids[idx])
+        return self.tokenizer.decode(self.input_ids[idx])
 
         
     def clean_string(self, x):
         res = eval(x)
-        flat_list = [item for sublist in list(res) for item in sublist]
-        path = " ".join(flat_list)
-        #x = x.replace(")(", ", ")
-        #x = x.replace("[", "")
-        #x = x.replace("]", "")
-        #x = x.replace("(", "").replace(")","").replace(";", "") 
+        if isinstance(res, int):
+            self.skipped_examples += 1
+            return ""
+        flat_list = [item.replace("_", "") for sublist in list(res) for item in sublist]
+        out = []
+        for ent in flat_list:
+            if ent.lower() in self.r2t.keys():
+                out.append(self.r2t[ent.lower()])
+            else:
+                out.append(ent)
+        path = " ".join(out)
         return path
     
     def __len__(self):
