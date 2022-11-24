@@ -62,7 +62,7 @@ def main(args):
         train = CopaDataset(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
         train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
         logging.info(f"Init validation dataset")
-        val = CopaDataset(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
+        val = CopaDataset(model_name, split="vain", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
         val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
         model = AutoModelForMultipleChoice.from_pretrained(model_name).to(device)
 
