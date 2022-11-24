@@ -133,17 +133,15 @@ def main(args):
             correct = 0
             n = 0
             for i, (input_ids, attention_masks, y) in enumerate(tqdm(val_loader)):
-                input_ids = input_ids.to(device)
-                attention_masks = attention_masks.to(device)
                 y = torch.LongTensor(y)
-                y = y.to(device)
+                input_ids, attention_masks, y = input_ids.to(device), attention_masks.to(device), y.to(device)
                 out = model(input_ids=input_ids, attention_mask=attention_masks).logits
                 y_hat = nn.Softmax(out)
-                y_hat = (torch.argmax(out, dim=1))
-                correct += (y_hat == y).float().sum()
+                y_hat = torch.argmax(out, dim=1)
+                correct += (y_hat == y).sum()
                 loss = criterion(out, y)
                 val_loss += loss.item()
-                n += 1*args.batch_size
+                n += len(y)
                 if args.debug:
                     break
 
