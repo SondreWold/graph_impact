@@ -4,7 +4,7 @@ import torch.nn as nn
 from transformers import AutoTokenizer, set_seed, AutoModelForSequenceClassification, AutoModelForMultipleChoice, Trainer, TrainingArguments
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.nn import CrossEntropyLoss
+from torch.nn import CrossEntropyLoss, BCELoss
 import logging
 import argparse
 from tqdm import tqdm
@@ -22,7 +22,7 @@ device = 'cuda:0' if torch.cuda.is_available() else 'mps'
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate graph impact on stance predicition")
     parser.add_argument("--batch_size", type=int, default=16, help="The batch size to use during training.")
-    parser.add_argument("--weight_decay", type=float, default=0.0, help="The weight decay to use during training.") 
+    parser.add_argument("--weight_decay", type=float, default=0.1, help="The weight decay to use during training.") 
     parser.add_argument("--model_name", type=str, default="bert-base-uncased", help="The pretrained model to use")
     parser.add_argument("--task", type=str, default="copa", help="The task to train on")
     parser.add_argument("--epochs", type=int, default=3, help="The number of epochs.")
@@ -84,6 +84,7 @@ def main(args):
     decoded_sample = train.get_decoded_sample(10)
     logging.info(f"Decoded sentence: {decoded_sample}")
 
+
     criterion = CrossEntropyLoss()
 
     no_decay = ["bias", "LayerNorm.weight"]
@@ -98,10 +99,9 @@ def main(args):
         },
     ]
 
-    logging.info(f"LEARNING RATE WAS: {args.lr}")
-    optimizer = AdamW(model.parameters(), lr=args.lr)
-    #steps = args.epochs * len(train_loader)
-    #scheduler = CosineAnnealingLR(optimizer, T_max=steps)
+    optimizer = AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    steps = args.epochs * len(train_loader)
+    scheduler = CosineAnnealingLR(optimizer, T_max=steps)
     
     patience = args.patience
     best_acc = 0.0
@@ -120,7 +120,7 @@ def main(args):
             losses.append(loss.item())
             loss.backward()
             optimizer.step()
-            #scheduler.step()
+            scheduler.step()
             if args.debug:
                 break
             else:
