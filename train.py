@@ -156,7 +156,7 @@ def main(args):
             wandb.log({"accuracy": accuracy})
         if accuracy > best_acc:
             path = "models/copa/best_model.pt" if args.task == "copa" else "models/expla/best_model.pt"
-            patience = 2 #reset patience
+            patience = args.patience #reset patience
             best_acc = accuracy
             torch.save({
             'model_state_dict': model.state_dict(),
