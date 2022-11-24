@@ -62,7 +62,7 @@ def main(args):
         train = CopaDataset(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
         train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
         logging.info(f"Init validation dataset")
-        val = CopaDataset(model_name, split="vain", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
+        val = CopaDataset(model_name, split="val", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
         val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
         model = AutoModelForMultipleChoice.from_pretrained(model_name).to(device)
 
@@ -156,11 +156,12 @@ def main(args):
             wandb.log({"val_loss": v_l})
             wandb.log({"accuracy": accuracy})
         if accuracy > best_acc:
+            path = "models/copa/best_model.pt" if args.task == "copa" else "models/expla/best_model.pt"
             patience = 2 #reset patience
             best_acc = accuracy
             torch.save({
             'model_state_dict': model.state_dict(),
-            }, "./models/best_model.pt")
+            }, path)
         else:
             patience -= 1
             if patience == 0:
@@ -169,8 +170,12 @@ def main(args):
         
     
     if args.test:
-        test = ExplaGraphs(model_name, split="test",  use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
-        test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=True)
+        if args.task == "expla":
+            test = ExplaGraphs(model_name, split="test",  use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
+            test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=True)
+        if args.task == "copa":
+            test = CopaDataset(model_name, split="test",  use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
+            test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=True)
         checkpoint = torch.load("./models/best_model.pt")
         model.load_state_dict(checkpoint['model_state_dict'])
         model.eval()
