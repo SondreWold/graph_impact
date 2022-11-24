@@ -117,7 +117,7 @@ class CopaDataset(Dataset):
 
     
     def get_decoded_sample(self, idx):
-        return "Alt 1: " + self.tokenizer.decode(self.dataset[idx]['input_ids'][0]) + " Alt 2: " + self.tokenizer.decode(self.dataset[idx]['input_ids'][1]) + " Correct answer: " + self.labels[idx]
+        return "Alt 1: " + self.tokenizer.decode(self.dataset[idx]['input_ids'][0]) + " Alt 2: " + self.tokenizer.decode(self.dataset[idx]['input_ids'][1]) + " Correct answer: " + str(self.labels[idx])
 
 
     def encode_batch(self, examples):

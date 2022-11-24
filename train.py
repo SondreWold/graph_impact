@@ -67,18 +67,19 @@ def main(args):
         model = AutoModelForMultipleChoice.from_pretrained(model_name).to(device)
 
     if not args.debug:
-        wandb.init(project="graph_impact", entity="sondrewo")
-        wandb.log({"batch_size": args.batch_size})
-        wandb.log({"epochs": args.lr})
-        wandb.log({"learning_rate": args.lr})
-        wandb.log({"seed": args.seed})
-        wandb.log({"uses_graph": args.use_graphs})
-        wandb.log({"uses_generated": args.pg})
-        wandb.log({"uses_retrieved": args.rg})
-        wandb.log({"model": model_name})
-        wandb.log({"task": args.task})
+        config = {
+            "task": args.task,
+            "learning_rate": args.lr,
+            "epochs": args.epochs,
+            "batch_size": args.batch_size,
+            "seed": args.seed,
+            "uses_graphs": args.use_graphs,
+            "uses_generated": args.pg,
+            "uses_retrieved": args.rg,
+            "model": model_name,
+        }
 
-
+        wandb.init(project="graph_evaluation", config=config, entity="sondrewo")
 
     decoded_sample = train.get_decoded_sample(10)
     logging.info(f"Decoded sentence: {decoded_sample}")
