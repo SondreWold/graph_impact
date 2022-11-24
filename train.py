@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
-from transformers import AutoTokenizer, set_seed, AutoModelForSequenceClassification, Trainer, TrainingArguments
+from transformers import AutoTokenizer, set_seed, AutoModelForSequenceClassification, AutoModelForMultipleChoice, Trainer, TrainingArguments
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.nn import CrossEntropyLoss
@@ -11,121 +11,77 @@ from tqdm import tqdm
 import os
 import wandb
 from modeling import SequenceModel
-from dataset import ExplaGraphs
+from dataset import ExplaGraphs,CopaDataset
 import os
 import random
 import numpy as np
-
 
 device = 'cuda:0' if torch.cuda.is_available() else 'mps'
 #torch.backends.cuda.matmul.allow_tf32 = True #(RTX3090 and A100 GPU only)
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Evaluate graph impact on stance predicition")
-
-    parser.add_argument(
-    "--batch_size",
-    type=int,
-    default=8,
-    help="The batch size to use during training.",
-    )
-    
-    parser.add_argument(
-    "--weight_decay",
-    type=float,
-    default=0.0,
-    help="The weight decay to use during training.",
-    )
-
-    parser.add_argument(
-    "--model_name",
-    type=str,
-    default="bert-base-uncased",
-    help="The pretrained model to use",
-    )
-
-
-    parser.add_argument(
-    "--epochs",
-    type=int,
-    default=3,
-    help="The number of epochs.",
-    )
-
-    parser.add_argument(
-    "--debug",
-    action='store_true',
-    help="Trigger debug mode",
-    )
-
-    parser.add_argument(
-    "--use_graphs",
-    action='store_true',
-    help="Trigger graph mode",
-    )
-
-    parser.add_argument(
-    "--test",
-    action='store_true',
-    help="Trigger test eval",
-    )
-
-    parser.add_argument(
-    "--pg",
-    action='store_true',
-    help="Trigger PG mode",
-    )
-
-    parser.add_argument(
-    "--rg",
-    action='store_true',
-    help="Trigger rand g mode",
-    )
-    
-    parser.add_argument(
-    "--lr",
-    type=float,
-    default=1e-5,
-    help="The learning rate).",
-    )
-
-    parser.add_argument(
-    "--seed",
-    type=int,
-    default=42,
-    help="The rng seed",
-    )
+    parser = argparse.ArgumentParser(description="Evaluate graph impact on stance predicition")
+    parser.add_argument("--batch_size", type=int, default=16, help="The batch size to use during training.")
+    parser.add_argument("--weight_decay", type=float, default=0.0, help="The weight decay to use during training.") 
+    parser.add_argument("--model_name", type=str, default="bert-base-uncased", help="The pretrained model to use")
+    parser.add_argument("--task", type=str, default="copa", help="The task to train on")
+    parser.add_argument("--epochs", type=int, default=3, help="The number of epochs.")
+    parser.add_argument("--debug", action='store_true', help="Trigger debug mode")
+    parser.add_argument("--use_graphs", action='store_true', help="Trigger graph mode")
+    parser.add_argument("--test", action='store_true', help="Trigger test eval")
+    parser.add_argument("--pg", action='store_true', help="Trigger PG mode")
+    parser.add_argument("--rg", action='store_true', help="Trigger rand g mode")
+    parser.add_argument("--lr", type=float, default=3e-5, help="The learning rate).")
+    parser.add_argument("--seed", type=int, default=42, help="The rng seed")
+    parser.add_argument("--patience", type=int, default=2, help="The patience value")
 
     args = parser.parse_args()
-
     return args
 
 
 def main(args):
-    logging.info(f"Initialised")
-    wandb.init(project="graph_impact", entity="sondrewo")
+    print("==========================================================================================")
+    logging.info(f"Initialised training on task: {args.task.upper()}, debug={args.debug}")
+    print("==========================================================================================")
+    print("\n")
+    logging.info(f"Use gold graphs={args.use_graphs}, use GPT-2 generated graph={args.pg}, use retrieved graphs={args.rg}")
+
+
     model_name = args.model_name
-    train = ExplaGraphs(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
-    val = ExplaGraphs(model_name, split="val", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
-    train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
-    val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
+
+    if args.task == "expla":
+        logging.info(f"Init train dataset")
+        train = ExplaGraphs(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
+        logging.info(f"Init validation dataset")
+        val = ExplaGraphs(model_name, split="val", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
+        train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
+        val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
+        model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
+    if args.task == "copa":
+        logging.info(f"Init train dataset")
+        train = CopaDataset(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
+        train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
+        logging.info(f"Init validation dataset")
+        val = CopaDataset(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
+        val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
+        model = AutoModelForMultipleChoice.from_pretrained(model_name).to(device)
+
+    if not args.debug:
+        wandb.init(project="graph_impact", entity="sondrewo")
+        wandb.log({"batch_size": args.batch_size})
+        wandb.log({"epochs": args.lr})
+        wandb.log({"learning_rate": args.lr})
+        wandb.log({"seed": args.seed})
+        wandb.log({"uses_graph": args.use_graphs})
+        wandb.log({"uses_generated": args.pg})
+        wandb.log({"uses_retrieved": args.rg})
+        wandb.log({"model": model_name})
+        wandb.log({"task": args.task})
 
 
-    wandb.log({"batch_size": args.batch_size})
-    wandb.log({"epochs": args.lr})
-    wandb.log({"learning_rate": args.lr})
-    wandb.log({"seed": args.seed})
-    wandb.log({"uses_graph": args.use_graphs})
-    wandb.log({"uses_generated": args.pg})
-    wandb.log({"uses_retrieved": args.rg})
 
     decoded_sample = train.get_decoded_sample(10)
-    logging.info(f"Example sentence: {decoded_sample}")
-
-    
-
-    model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
+    logging.info(f"Decoded sentence: {decoded_sample}")
 
     criterion = CrossEntropyLoss()
 
@@ -140,16 +96,12 @@ def main(args):
             "weight_decay": 0.0,
         },
     ]
+
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.lr)
     steps = args.epochs * len(train_loader)
     scheduler = CosineAnnealingLR(optimizer, T_max=steps)
-
-    if args.debug:
-        logging.info("Debug mode activated.")
-        og, dec = train.get_decoded_sample(0)
-        logging.info(f"Sample from dataset. Original was: ---- {og} ---- , decoded was ---- {dec} ---- ")
     
-    patience = 2
+    patience = args.patience
     best_acc = 0.0
     losses = []
     for epoch in range(args.epochs):
