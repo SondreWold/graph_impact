@@ -98,9 +98,10 @@ def main(args):
         },
     ]
 
-    optimizer = AdamW(optimizer_grouped_parameters, lr=args.lr)
-    steps = args.epochs * len(train_loader)
-    scheduler = CosineAnnealingLR(optimizer, T_max=steps)
+    logging.info(f"LEARNING RATE WAS: {args.lr}")
+    optimizer = AdamW(model.parameters(), lr=args.lr)
+    #steps = args.epochs * len(train_loader)
+    #scheduler = CosineAnnealingLR(optimizer, T_max=steps)
     
     patience = args.patience
     best_acc = 0.0
@@ -110,8 +111,8 @@ def main(args):
         model.train()
         train_loss = 0.0
         for i, (input_ids, attention_masks, y) in enumerate(tqdm(train_loader)):
-            y = torch.LongTensor(y)
             optimizer.zero_grad()
+            y = torch.LongTensor(y)
             input_ids, attention_masks, y = input_ids.to(device), attention_masks.to(device), y.to(device)
             y_hat = model(input_ids, attention_masks).logits
             loss = criterion(y_hat, y)
@@ -119,7 +120,7 @@ def main(args):
             losses.append(loss.item())
             loss.backward()
             optimizer.step()
-            scheduler.step()
+            #scheduler.step()
             if args.debug:
                 break
             else:
