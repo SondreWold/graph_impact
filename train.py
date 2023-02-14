@@ -153,8 +153,8 @@ def main(args):
         if not args.debug:
             wandb.log({"train_loss_epoch": t_l})
             wandb.log({"val_loss": v_l})
-            wandb.log({"accuracy": accuracy})
         if accuracy > best_acc:
+            wandb.log({"accuracy": accuracy})
             path = "models/copa/best_model.pt" if args.task == "copa" else "models/expla/best_model.pt"
             patience = args.patience #reset patience
             best_acc = accuracy
