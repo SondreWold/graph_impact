@@ -79,7 +79,7 @@ def main(args):
             "model": model_name,
         }
 
-        wandb.init(project="graph_evaluation", config=config, entity="sondrewo")
+        wandb.init(project="graph_quality", config=config, entity="sondrewo")
 
     decoded_sample = train.get_decoded_sample(10)
     logging.info(f"Decoded sentence: {decoded_sample}")
