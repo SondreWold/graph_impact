@@ -37,8 +37,7 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=42, help="The rng seed")
     parser.add_argument("--gradient_clip", type=float, default=1, help="The gradient clip")
     parser.add_argument("--beta", type=float, default=1, help="The adam momentum")
-
-    parser.add_argument("--patience", type=int, default=3, help="The patience value")
+    parser.add_argument("--patience", type=int, default=2, help="The patience value")
 
     args = parser.parse_args()
     return args
@@ -125,7 +124,7 @@ def main(args):
             optimizer.zero_grad()
             y = torch.LongTensor(y)
             input_ids, attention_masks, y = input_ids.to(device), attention_masks.to(device), y.to(device)
-            out = model(input_ids, attention_masks)
+            out = model(input_ids, attention_masks, labels=y)
             logits, loss = out.logits, out.loss
             #loss = criterion(y_hat, y)
             train_loss += loss.detach().float()
@@ -146,11 +145,12 @@ def main(args):
             for i, (input_ids, attention_masks, y) in enumerate(tqdm(val_loader)):
                 y = torch.LongTensor(y)
                 input_ids, attention_masks, y = input_ids.to(device), attention_masks.to(device), y.to(device)
-                out = model(input_ids=input_ids, attention_mask=attention_masks).logits
-                y_hat = nn.Softmax(out)
-                y_hat = torch.argmax(out, dim=1)
+                out = model(input_ids=input_ids, attention_mask=attention_masks, labels=y)
+                logits, loss = out.logits, out.loss
+
+                y_hat = torch.argmax(logits, dim=1)
                 correct += (y_hat == y).sum()
-                loss = criterion(out, y)
+                #loss = criterion(out, y)
                 val_loss += loss.item()
                 n += len(y)
                 if args.debug:
