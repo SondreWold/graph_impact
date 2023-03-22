@@ -29,8 +29,9 @@ def parse_args():
     parser.add_argument("--debug", action='store_true', help="Trigger debug mode")
     parser.add_argument("--use_graphs", action='store_true', help="Trigger graph mode")
     parser.add_argument("--test", action='store_true', help="Trigger test eval")
-    parser.add_argument("--pg", action='store_true', help="Trigger PG mode")
-    parser.add_argument("--rg", action='store_true', help="Trigger rand g mode")
+    parser.add_argument("--pg", action='store_true', help="Trigger PathGenerator mode")
+    parser.add_argument("--el", action='store_true', help="Trigger Entity Linker graph mode")
+    parser.add_argument("--rg", action='store_true', help="Trigger string matching and retrieve mode")
     parser.add_argument("--lr", type=float, default=3e-5, help="The learning rate).")
     parser.add_argument("--seed", type=int, default=42, help="The rng seed")
     parser.add_argument("--patience", type=int, default=2, help="The patience value")
@@ -44,25 +45,25 @@ def main(args):
     logging.info(f"Initialised training on task: {args.task.upper()}, debug={args.debug}")
     print("==========================================================================================")
     print("\n")
-    logging.info(f"Use gold graphs={args.use_graphs}, use GPT-2 generated graph={args.pg}, use retrieved graphs={args.rg}")
+    logging.info(f"Use graphs={args.use_graphs}, use GPT-2 generated graph={args.pg}, use retrieved graphs={args.rg}, , use linked graphs={args.el}")
 
 
     model_name = args.model_name
 
     if args.task == "expla":
         logging.info(f"Init train dataset")
-        train = ExplaGraphs(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
+        train = ExplaGraphs(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
         logging.info(f"Init validation dataset")
-        val = ExplaGraphs(model_name, split="val", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
+        val = ExplaGraphs(model_name, split="val", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
         train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
         val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
         model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
     if args.task == "copa":
         logging.info(f"Init train dataset")
-        train = CopaDataset(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
+        train = CopaDataset(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
         train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
         logging.info(f"Init validation dataset")
-        val = CopaDataset(model_name, split="val", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
+        val = CopaDataset(model_name, split="val", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
         val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
         model = AutoModelForMultipleChoice.from_pretrained(model_name).to(device)
 
@@ -70,13 +71,16 @@ def main(args):
         config = {
             "task": args.task,
             "learning_rate": args.lr,
+            "weight_decay": args.weight_decay,
             "epochs": args.epochs,
             "batch_size": args.batch_size,
             "seed": args.seed,
             "uses_graphs": args.use_graphs,
             "uses_generated": args.pg,
             "uses_retrieved": args.rg,
+            "uses_linked": args.el,
             "model": model_name,
+            "test": args.test
         }
 
         wandb.init(project="graph_quality", config=config, entity="sondrewo")
@@ -170,11 +174,11 @@ def main(args):
     
     if args.test:
         if args.task == "expla":
-            test = ExplaGraphs(model_name, split="test",  use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
-            test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=True)
+            test = ExplaGraphs(model_name, split="test",  use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
+            test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=False)
         if args.task == "copa":
-            test = CopaDataset(model_name, split="test",  use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg)
-            test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=True)
+            test = CopaDataset(model_name, split="test",  use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
+            test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=False)
         checkpoint = torch.load("./models/best_model.pt")
         model.load_state_dict(checkpoint['model_state_dict'])
         model.eval()

@@ -12,16 +12,18 @@ import json
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 class ExplaGraphs(Dataset):
-    def __init__(self, model_name, split="train", use_graphs=False, use_pg=False, use_rg=False, generate_pg=False):
+    def __init__(self, model_name, split="train", use_graphs=False, use_pg=False, use_rg=False, use_el=False):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        df = pd.read_csv(f"./data/explagraphs/{split}.tsv", sep="\t", header=0, index_col=0)
+        df = pd.read_csv(f"./data/explagraphs/{split}_v2.tsv", sep="\t", header=0, index_col=0)
         self.premises = df["belief"].to_numpy()
         self.arguments = df["argument"].to_numpy()
         self.labels = df["label"].to_numpy()
         self.explanations = df["gold_graph"].to_numpy()
         self.generated_explanations = df["generated_graph"].to_numpy()
         self.random_explanations = df["retrieved_graph"]
+        self.linked_explanations = df["linked_paths"]
         self.random_explanations = self.random_explanations.fillna('').to_numpy() #replace no path found with empty path
+        self.linked_explanations = self.linked_explanations.fillna('').to_numpy() #replace no path found with empty path
         self.r2t = None
         with open('relation2text.json') as json_file:
             r2t = json.load(json_file)
@@ -32,8 +34,11 @@ class ExplaGraphs(Dataset):
 
         if use_pg == True:
             self.explanations = self.generated_explanations
+        if use_el == True:
+            self.explanations = self.linked_explanations
         if use_rg == True:
             self.explanations = self.random_explanations
+        
         if use_graphs == True:
             self.features = [prem + " " + self.tokenizer.sep_token + " " + arg + " " + self.tokenizer.sep_token + " " + self.clean_string(exp) for prem,arg,exp in zip(self.premises, self.arguments, self.explanations)]
         else:
@@ -72,10 +77,10 @@ class ExplaGraphs(Dataset):
 
 
 class CopaDataset(Dataset):
-    def __init__(self, model_name, split="train", use_graphs=False, use_pg=False, use_rg=False, generate_pg=False):
+    def __init__(self, model_name, split="train", use_graphs=False, use_pg=False, use_rg=False, use_el=False):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         options = [1, 2]
-        df = pd.read_csv(f"./data/copa/{split}.tsv", sep="\t", header=0, index_col=0)
+        df = pd.read_csv(f"./data/copa/{split}_v2.tsv", sep="\t", header=0, index_col=0)
         dataset = Dset.from_pandas(df)
         self.graph_type = "gold_graph"
         self.use_graphs = use_graphs
@@ -90,6 +95,8 @@ class CopaDataset(Dataset):
             self.graph_type= "retrieved_graph"
         if use_pg:
             self.graph_type= "generated_graph"
+        if use_el:
+            self.graph_type= "linked_paths"
 
         self.dataset = self.preprocess_dataset(dataset)
 
