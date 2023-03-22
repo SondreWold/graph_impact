@@ -1,43 +1,8 @@
-for seed in 123 43 132
-do
-    for lr in 1e-5 2e-5 3e-5 4e-5 5e-5 1e-6 5e-4
-    do
-        for batch_size in 8 16 32
-        do
-            python3 train.py --seed=$seed --model="bert-base-uncased" --epochs=10 --task="copa" --batch_size=$batch_size --lr=$lr
-        done
-    done
-done
 
-for seed in 123 43 132
+for lr in 1e-5 8e-6 6e-6 4e-6 2e-6 1e-6
 do
-    for lr in 1e-5 2e-5 3e-5 4e-5 5e-5 1e-6 5e-4
+    for batch_size in 4 8 16 32 64
     do
-        for batch_size in 8 16 32
-        do
-            python3 train.py --seed=$seed --model="bert-base-uncased" --epochs=10 --task="expla" --batch_size=$batch_size --lr=$lr
-        done
-    done
-done
-
-for seed in 123 43 132
-do
-    for lr in 1e-5 2e-5 3e-5 4e-5 5e-5 1e-6 5e-4
-    do
-        for batch_size in 8 16 32
-        do
-            python3 train.py --seed=$seed --model="bert-base-uncased" --use_graphs --epochs=10 --task="copa" --batch_size=$batch_size --lr=$lr
-        done
-    done
-done
-
-for seed in 123 43 132
-do
-    for lr in 1e-5 2e-5 3e-5 4e-5 5e-5 1e-6 5e-4
-    do
-        for batch_size in 8 16 32
-        do
-            python3 train.py --seed=$seed --model="bert-base-uncased" --use_graphs --epochs=10 --task="expla" --batch_size=$batch_size --lr=$lr
-        done
+        python3 train.py --seed=$seed --model="roberta-large" --epochs=10 --task="copa" --batch_size=$batch_size --lr=$lr
     done
 done
