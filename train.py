@@ -2,8 +2,9 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
 from transformers import AutoTokenizer, set_seed, AutoModelForSequenceClassification, AutoModelForMultipleChoice, Trainer, TrainingArguments
-from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR
+#from torch.optim import AdamW
+#from torch.optim.lr_scheduler import CosineAnnealingLR
+from transformers import AdamW, get_linear_schedule_with_warmup
 from torch.nn import CrossEntropyLoss, BCELoss
 import logging
 import argparse
@@ -22,7 +23,7 @@ device = 'cuda:0' if torch.cuda.is_available() else 'mps'
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate graph impact on stance predicition")
     parser.add_argument("--batch_size", type=int, default=16, help="The batch size to use during training.")
-    parser.add_argument("--weight_decay", type=float, default=0.1, help="The weight decay to use during training.") 
+    parser.add_argument("--weight_decay", type=float, default=0.01, help="The weight decay to use during training.") 
     parser.add_argument("--model_name", type=str, default="bert-base-uncased", help="The pretrained model to use")
     parser.add_argument("--task", type=str, default="copa", help="The task to train on")
     parser.add_argument("--epochs", type=int, default=3, help="The number of epochs.")
@@ -34,7 +35,7 @@ def parse_args():
     parser.add_argument("--rg", action='store_true', help="Trigger string matching and retrieve mode")
     parser.add_argument("--lr", type=float, default=3e-5, help="The learning rate).")
     parser.add_argument("--seed", type=int, default=42, help="The rng seed")
-    parser.add_argument("--patience", type=int, default=2, help="The patience value")
+    parser.add_argument("--patience", type=int, default=3, help="The patience value")
 
     args = parser.parse_args()
     return args
@@ -103,9 +104,12 @@ def main(args):
         },
     ]
 
+    t_total = len(train_loader) * args.epochs
+
     optimizer = AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     steps = args.epochs * len(train_loader)
-    scheduler = CosineAnnealingLR(optimizer, T_max=steps)
+    #scheduler = CosineAnnealingLR(optimizer, T_max=steps)
+    scheduler = get_linear_schedule_with_warmup(optimizer, 0.1*t_total, t_total)
     
     patience = args.patience
     best_acc = 0.0
@@ -123,6 +127,7 @@ def main(args):
             train_loss += loss.item()
             losses.append(loss.item())
             loss.backward()
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
             scheduler.step()
             if args.debug:
