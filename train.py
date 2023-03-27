@@ -35,7 +35,7 @@ def parse_args():
     parser.add_argument("--rg", action='store_true', help="Trigger string matching and retrieve mode")
     parser.add_argument("--lr", type=float, default=3e-5, help="The learning rate).")
     parser.add_argument("--seed", type=int, default=42, help="The rng seed")
-    parser.add_argument("--gradient_clip", type=float, default=1, help="The gradient clip")
+    parser.add_argument("--gradient_clip", action='store_true', help="The gradient clip")
     parser.add_argument("--beta", type=float, default=1, help="The adam momentum")
     parser.add_argument("--patience", type=int, default=2, help="The patience value")
 
@@ -59,7 +59,7 @@ def main(args):
         logging.info(f"Init validation dataset")
         val = ExplaGraphs(model_name, split="val", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
         train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
-        val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
+        val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=False)
         model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
     if args.task == "copa":
         logging.info(f"Init train dataset")
@@ -67,7 +67,7 @@ def main(args):
         train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
         logging.info(f"Init validation dataset")
         val = CopaDataset(model_name, split="val", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
-        val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=True)
+        val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=False)
         model = AutoModelForMultipleChoice.from_pretrained(model_name).to(device)
 
     if not args.debug:
@@ -124,14 +124,12 @@ def main(args):
             optimizer.zero_grad()
             y = torch.LongTensor(y)
             input_ids, attention_masks, y = input_ids.to(device), attention_masks.to(device), y.to(device)
-            out = model(input_ids, attention_masks, labels=y)
-            logits, loss = out.logits, out.loss
-            #loss = criterion(y_hat, y)
+            out = model(input_ids, attention_masks).logits
+            loss = criterion(out, y)
             train_loss += loss.detach().float()
-            #losses.append(loss.item())
-
             loss.backward()
-            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            if args.gradient_clip:
+                grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
             scheduler.step()
             if args.debug:
@@ -145,12 +143,10 @@ def main(args):
             for i, (input_ids, attention_masks, y) in enumerate(tqdm(val_loader)):
                 y = torch.LongTensor(y)
                 input_ids, attention_masks, y = input_ids.to(device), attention_masks.to(device), y.to(device)
-                out = model(input_ids=input_ids, attention_mask=attention_masks, labels=y)
-                logits, loss = out.logits, out.loss
-
-                y_hat = torch.argmax(logits, dim=1)
+                out = model(input_ids=input_ids, attention_mask=attention_masks).logits
+                y_hat = torch.argmax(out, dim=-1)
                 correct += (y_hat == y).sum()
-                #loss = criterion(out, y)
+                loss = criterion(out, y)
                 val_loss += loss.item()
                 n += len(y)
                 if args.debug:
@@ -183,10 +179,11 @@ def main(args):
         if args.task == "expla":
             test = ExplaGraphs(model_name, split="test",  use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
             test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=False)
+            checkpoint = torch.load("./models/expla/best_model.pt")
         if args.task == "copa":
             test = CopaDataset(model_name, split="test",  use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
             test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=False)
-        checkpoint = torch.load("./models/best_model.pt")
+            checkpoint = torch.load("./models/copa/best_model.pt")
         model.load_state_dict(checkpoint['model_state_dict'])
         model.eval()
         with torch.no_grad():
@@ -198,10 +195,10 @@ def main(args):
                 y = torch.LongTensor(y)
                 y = y.to(device)
                 out = model(input_ids=input_ids, attention_mask=attention_masks).logits
-                y_hat = nn.Softmax(out)
+                #y_hat = nn.Softmax(out)
                 y_hat = (torch.argmax(out, dim=1))
                 correct += (y_hat == y).float().sum()
-                n += 1*args.batch_size
+                n += 1*y.size()[0]
             
             test_accuracy = correct / n
         
