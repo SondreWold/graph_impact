@@ -161,10 +161,10 @@ def main(args):
         if not args.debug:
             wandb.log({"train_loss_epoch": t_l})
             wandb.log({"val_loss": v_l})
-        if v_l < best_val_loss:
+        if accuracy > best_acc:
             path = "models/copa/best_model.pt" if args.task == "copa" else "models/expla/best_model.pt"
             patience = args.patience #reset patience
-            best_val_loss = v_l
+            best_acc = accuracy
             torch.save({
             'model_state_dict': model.state_dict(),
             }, path)
@@ -190,15 +190,15 @@ def main(args):
             correct = 0
             n = 0
             for i, (input_ids, attention_masks, y) in enumerate(tqdm(test_loader)):
+                print()
                 input_ids = input_ids.to(device)
                 attention_masks = attention_masks.to(device)
                 y = torch.LongTensor(y)
                 y = y.to(device)
                 out = model(input_ids=input_ids, attention_mask=attention_masks).logits
-                #y_hat = nn.Softmax(out)
-                y_hat = (torch.argmax(out, dim=1))
+                y_hat = torch.argmax(out, dim=-1)
                 correct += (y_hat == y).float().sum()
-                n += 1*y.size()[0]
+                n += len(y)
             
             test_accuracy = correct / n
         
