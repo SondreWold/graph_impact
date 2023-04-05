@@ -88,7 +88,7 @@ def main(args):
             "uses_linked": args.el,
             "model": model_name,
             "test": args.test,
-            "beta2": args.beta,
+            "dropout": args.dropout,
         }
 
         wandb.init(project="graph_quality", config=config, entity="sondrewo")
