@@ -6,10 +6,10 @@ from transformers import AutoModel, AutoTokenizer
 
 class SequenceModel(nn.Module):
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, dropout):
         super().__init__()
         self.encoder = AutoModel.from_pretrained(model_name, return_dict=True, output_hidden_states=True, output_attentions=True)
-        self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(dropout)
         self.head = nn.Linear(self.encoder.config.hidden_size, 2)
 
     def forward(self, input_ids, attention_mask):
@@ -21,11 +21,11 @@ class SequenceModel(nn.Module):
 
 class MCQA(nn.Module):
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, dropout):
         super().__init__()
         self.encoder = AutoModel.from_pretrained(model_name, return_dict=True, output_hidden_states=True, output_attentions=True)
         self.hidden_size = self.encoder.config.hidden_size
-        self.dropout = nn.Dropout(0.3)
+        self.dropout = nn.Dropout(dropout)
         self.head = nn.Linear(self.hidden_size, 1)
 
     def forward(self, input_ids, attention_mask):

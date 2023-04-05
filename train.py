@@ -39,6 +39,7 @@ def parse_args():
     parser.add_argument("--gradient_clip", action='store_true', help="The gradient clip")
     parser.add_argument("--beta", type=float, default=1, help="The adam momentum")
     parser.add_argument("--patience", type=int, default=2, help="The patience value")
+    parser.add_argument("--dropout", type=float, default=0.2, help="The dropout value")
 
     args = parser.parse_args()
     return args
@@ -62,7 +63,7 @@ def main(args):
         train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
         val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=False)
         #model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
-        model = SequenceModel(model_name).to(device)
+        model = SequenceModel(model_name, dropout=args.dropout).to(device)
     if args.task == "copa":
         logging.info(f"Init train dataset")
         train = CopaDataset(model_name, split="train", use_graphs=args.use_graphs, use_pgg=args.pgg, use_pgl=args.pgl, use_rg=args.rg, use_el=args.el)
@@ -71,7 +72,7 @@ def main(args):
         val = CopaDataset(model_name, split="val", use_graphs=args.use_graphs, use_pgg=args.pgg, use_pgl=args.pgl, use_rg=args.rg, use_el=args.el)
         val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=False)
         #model = AutoModelForMultipleChoice.from_pretrained(model_name).to(device)
-        model = MCQA(model_name).to(device)
+        model = MCQA(model_name, dropout=args.dropout).to(device)
 
     if not args.debug:
         config = {
@@ -194,12 +195,11 @@ def main(args):
             correct = 0
             n = 0
             for i, (input_ids, attention_masks, y) in enumerate(tqdm(test_loader)):
-                print()
                 input_ids = input_ids.to(device)
                 attention_masks = attention_masks.to(device)
                 y = torch.LongTensor(y)
                 y = y.to(device)
-                out = model(input_ids=input_ids, attention_mask=attention_masks).logits
+                out = model(input_ids=input_ids, attention_mask=attention_masks)
                 y_hat = torch.argmax(out, dim=-1)
                 correct += (y_hat == y).float().sum()
                 n += len(y)
