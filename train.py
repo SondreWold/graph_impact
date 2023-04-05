@@ -3,7 +3,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
 from transformers import AutoTokenizer, set_seed, AutoModelForSequenceClassification, AutoModelForMultipleChoice, Trainer, TrainingArguments
 from torch.optim import AdamW
-#from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from transformers import get_linear_schedule_with_warmup
 from torch.nn import CrossEntropyLoss, BCELoss
 import logging
@@ -11,7 +11,7 @@ import argparse
 from tqdm import tqdm
 import os
 import wandb
-from modeling import SequenceModel
+from modeling import SequenceModel, MCQA
 from dataset import ExplaGraphs,CopaDataset
 import os
 import random
@@ -30,7 +30,8 @@ def parse_args():
     parser.add_argument("--debug", action='store_true', help="Trigger debug mode")
     parser.add_argument("--use_graphs", action='store_true', help="Trigger graph mode")
     parser.add_argument("--test", action='store_true', help="Trigger test eval")
-    parser.add_argument("--pg", action='store_true', help="Trigger PathGenerator mode")
+    parser.add_argument("--pgg", action='store_true', help="Trigger PathGenerator mode")
+    parser.add_argument("--pgl", action='store_true', help="Trigger PathGeneratorLinked mode")
     parser.add_argument("--el", action='store_true', help="Trigger Entity Linker graph mode")
     parser.add_argument("--rg", action='store_true', help="Trigger string matching and retrieve mode")
     parser.add_argument("--lr", type=float, default=3e-5, help="The learning rate).")
@@ -48,27 +49,29 @@ def main(args):
     logging.info(f"Initialised training on task: {args.task.upper()}, debug={args.debug}")
     print("==========================================================================================")
     print("\n")
-    logging.info(f"Use graphs={args.use_graphs}, use GPT-2 generated graph={args.pg}, use retrieved graphs={args.rg}, , use linked graphs={args.el}")
+    logging.info(f"Use graphs={args.use_graphs}, use GPT-2 generated graph with gold head and tail={args.pgg}, use GPT-2 generated graph with linked head and tail={args.pgl}, use retrieved graphs={args.rg}, , use linked graphs={args.el}")
 
 
     model_name = args.model_name
 
     if args.task == "expla":
         logging.info(f"Init train dataset")
-        train = ExplaGraphs(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
+        train = ExplaGraphs(model_name, split="train", use_graphs=args.use_graphs, use_pgg=args.pgg, use_pgl=args.pgl, use_rg=args.rg, use_el=args.el)
         logging.info(f"Init validation dataset")
-        val = ExplaGraphs(model_name, split="val", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
+        val = ExplaGraphs(model_name, split="val", use_graphs=args.use_graphs, use_pgg=args.pgg, use_pgl=args.pgl, use_rg=args.rg, use_el=args.el)
         train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
         val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=False)
-        model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
+        #model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
+        model = SequenceModel(model_name).to(device)
     if args.task == "copa":
         logging.info(f"Init train dataset")
-        train = CopaDataset(model_name, split="train", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
+        train = CopaDataset(model_name, split="train", use_graphs=args.use_graphs, use_pgg=args.pgg, use_pgl=args.pgl, use_rg=args.rg, use_el=args.el)
         train_loader = DataLoader(train, batch_size=args.batch_size, shuffle=True)
         logging.info(f"Init validation dataset")
-        val = CopaDataset(model_name, split="val", use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
+        val = CopaDataset(model_name, split="val", use_graphs=args.use_graphs, use_pgg=args.pgg, use_pgl=args.pgl, use_rg=args.rg, use_el=args.el)
         val_loader = DataLoader(val, batch_size=args.batch_size, shuffle=False)
-        model = AutoModelForMultipleChoice.from_pretrained(model_name).to(device)
+        #model = AutoModelForMultipleChoice.from_pretrained(model_name).to(device)
+        model = MCQA(model_name).to(device)
 
     if not args.debug:
         config = {
@@ -79,7 +82,7 @@ def main(args):
             "batch_size": args.batch_size,
             "seed": args.seed,
             "uses_graphs": args.use_graphs,
-            "uses_generated": args.pg,
+            "uses_generated": args.pgg,
             "uses_retrieved": args.rg,
             "uses_linked": args.el,
             "model": model_name,
@@ -107,10 +110,10 @@ def main(args):
         },
     ]
 
-    optimizer = AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = AdamW(optimizer_grouped_parameters, lr=args.lr)
     steps = args.epochs * len(train_loader)
-    #scheduler = CosineAnnealingLR(optimizer, T_max=steps)
-    scheduler = get_linear_schedule_with_warmup(optimizer, 0.06*steps, steps)
+    scheduler = CosineAnnealingLR(optimizer, T_max=steps)
+    #scheduler = get_linear_schedule_with_warmup(optimizer, 0.06*steps, steps)
     
     patience = args.patience
     best_acc = 0.0
@@ -124,9 +127,9 @@ def main(args):
             optimizer.zero_grad()
             y = torch.LongTensor(y)
             input_ids, attention_masks, y = input_ids.to(device), attention_masks.to(device), y.to(device)
-            out = model(input_ids, attention_masks).logits
+            out = model(input_ids, attention_masks)
             loss = criterion(out, y)
-            train_loss += loss.detach().float()
+            train_loss += loss.item()
             loss.backward()
             if args.gradient_clip:
                 grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
@@ -143,7 +146,7 @@ def main(args):
             for i, (input_ids, attention_masks, y) in enumerate(tqdm(val_loader)):
                 y = torch.LongTensor(y)
                 input_ids, attention_masks, y = input_ids.to(device), attention_masks.to(device), y.to(device)
-                out = model(input_ids=input_ids, attention_mask=attention_masks).logits
+                out = model(input_ids=input_ids, attention_mask=attention_masks)
                 y_hat = torch.argmax(out, dim=-1)
                 correct += (y_hat == y).sum()
                 loss = criterion(out, y)
@@ -153,7 +156,8 @@ def main(args):
                     break
 
             accuracy = correct / n
-            wandb.log({"accuracy": accuracy})
+            if not args.debug:
+                wandb.log({"accuracy": accuracy})
 
         t_l = train_loss / len(train_loader)
         v_l = val_loss / len(val_loader)
@@ -177,11 +181,11 @@ def main(args):
     
     if args.test:
         if args.task == "expla":
-            test = ExplaGraphs(model_name, split="test",  use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
+            test = ExplaGraphs(model_name, split="test",  use_graphs=args.use_graphs, use_pgg=args.pgg, use_pgl=args.pgl, use_rg=args.rg, use_el=args.el)
             test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=False)
             checkpoint = torch.load("./models/expla/best_model.pt")
         if args.task == "copa":
-            test = CopaDataset(model_name, split="test",  use_graphs=args.use_graphs, use_pg=args.pg, use_rg=args.rg, use_el=args.el)
+            test = CopaDataset(model_name, split="test",  use_graphs=args.use_graphs, use_pgg=args.pgg, use_pgl=args.pgl, use_rg=args.rg, use_el=args.el)
             test_loader = DataLoader(test, batch_size=args.batch_size, shuffle=False)
             checkpoint = torch.load("./models/copa/best_model.pt")
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -216,7 +220,7 @@ if __name__ == "__main__":
         level=logging.INFO,
     )
 
-    if args.pg and args.rg:
+    if args.pgg and args.rg:
         logging.info("Cant use RG and PG simoultaniously")
         exit()
 

@@ -12,18 +12,20 @@ import json
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 class ExplaGraphs(Dataset):
-    def __init__(self, model_name, split="train", use_graphs=False, use_pg=False, use_rg=False, use_el=False):
+    def __init__(self, model_name, split="train", use_graphs=False, use_pgg=False, use_pgl=False, use_rg=False, use_el=False):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        df = pd.read_csv(f"./data/explagraphs/{split}_v2.tsv", sep="\t", header=0, index_col=0)
+        df = pd.read_csv(f"./data/explagraphs/{split}_v3.tsv", sep="\t", header=0, index_col=0)
         self.premises = df["belief"].to_numpy()
         self.arguments = df["argument"].to_numpy()
         self.labels = df["label"].to_numpy()
         self.explanations = df["gold_graph"].to_numpy()
-        self.generated_explanations = df["generated_graph"].to_numpy()
+        self.generated_explanations = df["generated_graph_gold"].to_numpy()
+        self.generated_explanations_linked = df["generated_graph_linked"].to_numpy()
         self.random_explanations = df["retrieved_graph"]
         self.linked_explanations = df["linked_paths"]
         self.random_explanations = self.random_explanations.fillna('').to_numpy() #replace no path found with empty path
         self.linked_explanations = self.linked_explanations.fillna('').to_numpy() #replace no path found with empty path
+
         self.r2t = None
         with open('relation2text.json') as json_file:
             r2t = json.load(json_file)
@@ -32,8 +34,10 @@ class ExplaGraphs(Dataset):
         self.label_inverter = {0: "counter", 1: "support"}
         self.skipped_examples = 0
 
-        if use_pg == True:
+        if use_pgg == True:
             self.explanations = self.generated_explanations
+        if use_pgl == True:
+            self.explanations = self.generated_explanations_linked
         if use_el == True:
             self.explanations = self.linked_explanations
         if use_rg == True:
@@ -77,10 +81,10 @@ class ExplaGraphs(Dataset):
 
 
 class CopaDataset(Dataset):
-    def __init__(self, model_name, split="train", use_graphs=False, use_pg=False, use_rg=False, use_el=False):
+    def __init__(self, model_name, split="train", use_graphs=False, use_pgg=False, use_pgl=False, use_rg=False, use_el=False):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         options = [1, 2]
-        df = pd.read_csv(f"./data/copa/{split}_v2.tsv", sep="\t", header=0, index_col=0)
+        df = pd.read_csv(f"./data/copa/{split}_v3.tsv", sep="\t", header=0, index_col=0)
         dataset = Dset.from_pandas(df)
         self.graph_type = "gold_graph"
         self.use_graphs = use_graphs
@@ -93,8 +97,10 @@ class CopaDataset(Dataset):
 
         if use_rg:
             self.graph_type= "retrieved_graph"
-        if use_pg:
-            self.graph_type= "generated_graph"
+        if use_pgg:
+            self.graph_type= "generated_graph_gold"
+        if use_pgl:
+            self.graph_type= "generated_graph_linked"
         if use_el:
             self.graph_type= "linked_paths"
 
@@ -107,19 +113,22 @@ class CopaDataset(Dataset):
 
 
     def clean_string(self, x):
-        res = eval(x)
-        if isinstance(res, int):
-            self.skipped_examples += 1
+        if x is not None: #Replace NaNs with empty string
+            res = eval(x)
+            if isinstance(res, int):
+                self.skipped_examples += 1
+                return ""
+            flat_list = [item.replace("_", "") for sublist in list(res) for item in sublist]
+            out = []
+            for ent in flat_list:
+                if ent.lower() in self.r2t.keys():
+                    out.append(self.r2t[ent.lower()])
+                else:
+                    out.append(ent)
+            path = " ".join(out)
+            return path
+        else:
             return ""
-        flat_list = [item.replace("_", "") for sublist in list(res) for item in sublist]
-        out = []
-        for ent in flat_list:
-            if ent.lower() in self.r2t.keys():
-                out.append(self.r2t[ent.lower()])
-            else:
-                out.append(ent)
-        path = " ".join(out)
-        return path
 
 
     
