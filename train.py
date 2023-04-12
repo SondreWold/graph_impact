@@ -28,6 +28,7 @@ def parse_args():
     parser.add_argument("--task", type=str, default="copa", help="The task to train on")
     parser.add_argument("--epochs", type=int, default=3, help="The number of epochs.")
     parser.add_argument("--debug", action='store_true', help="Trigger debug mode")
+    parser.add_argument("--freeze", action='store_true', help="Only fine tune classification head")
     parser.add_argument("--use_graphs", action='store_true', help="Trigger graph mode")
     parser.add_argument("--test", action='store_true', help="Trigger test eval")
     parser.add_argument("--pgg", action='store_true', help="Trigger PathGenerator mode")
@@ -88,6 +89,7 @@ def main(args):
             "uses_retrieved": args.rg,
             "uses_linked": args.el,
             "model": model_name,
+            "frozen": args.freeze,
             "test": args.test,
             "dropout": args.dropout,
         }
@@ -96,6 +98,10 @@ def main(args):
 
     decoded_sample = train.get_decoded_sample(10)
     logging.info(f"Decoded sentence: {decoded_sample}")
+
+    if args.freeze:
+        for param in model.encoder.parameters():
+            param.requires_grad = False
 
 
     criterion = CrossEntropyLoss()

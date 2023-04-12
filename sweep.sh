@@ -7,15 +7,10 @@ do
         do
             for weight_decay in 0.1 0.01
             do
-                python3 train.py --model="bert-large-uncased" --epochs=8 --dropout=$dropout --task="expla" --batch_size=$batch_size --lr=$lr --weight_decay=$weight_decay
-                python3 train.py --model="bert-large-uncased" --epochs=8 --dropout=$dropout --task="expla" --use_graphs --batch_size=$batch_size --lr=$lr --weight_decay=$weight_decay
-                python3 train.py --model="bert-large-uncased" --epochs=8 --dropout=$dropout --task="copa" --batch_size=$batch_size --lr=$lr --weight_decay=$weight_decay
-                python3 train.py --model="bert-large-uncased" --epochs=8 --dropout=$dropout --task="copa" --use_graphs --batch_size=$batch_size --lr=$lr --weight_decay=$weight_decay
-                
-                python3 train.py --model="bert-base-uncased" --epochs=8 --dropout=$dropout --task="expla" --batch_size=$batch_size --lr=$lr --weight_decay=$weight_decay
-                python3 train.py --model="bert-base-uncased" --epochs=8 --dropout=$dropout --task="expla" --use_graphs --batch_size=$batch_size --lr=$lr --weight_decay=$weight_decay
-                python3 train.py --model="bert-base-uncased" --epochs=8 --dropout=$dropout --task="copa" --batch_size=$batch_size --lr=$lr --weight_decay=$weight_decay
-                python3 train.py --model="bert-base-uncased" --epochs=8 --dropout=$dropout --task="copa" --use_graphs --batch_size=$batch_size --lr=$lr --weight_decay=$weight_decay
+                python3 train.py --model="bert-base-uncased" --freeze --epochs=8 --dropout=$dropout --task="expla" --batch_size=$batch_size --lr=$lr --weight_decay=$weight_decay
+                python3 train.py --model="bert-base-uncased" --freeze --epochs=8 --dropout=$dropout --task="expla" --use_graphs --batch_size=$batch_size --lr=$lr --weight_decay=$weight_decay
+                python3 train.py --model="bert-base-uncased" --freeze --epochs=8 --dropout=$dropout --task="copa" --batch_size=$batch_size --lr=$lr --weight_decay=$weight_decay
+                python3 train.py --model="bert-base-uncased" --freeze --epochs=8 --dropout=$dropout --task="copa" --use_graphs --batch_size=$batch_size --lr=$lr --weight_decay=$weight_decay
             done
         done
     done
