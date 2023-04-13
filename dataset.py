@@ -84,7 +84,7 @@ class CopaDataset(Dataset):
     def __init__(self, model_name, split="train", use_graphs=False, use_pgg=False, use_pgl=False, use_rg=False, use_el=False):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         options = [1, 2]
-        df = pd.read_csv(f"./data/copa/{split}_v3.tsv", sep="\t", header=0, index_col=0)
+        df = pd.read_csv(f"./data/copa/{split}_v4.tsv", sep="\t", header=0, index_col=0)
         dataset = Dset.from_pandas(df)
         self.graph_type = "gold_graph"
         self.use_graphs = use_graphs
