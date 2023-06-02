@@ -1,3 +1,8 @@
+'''
+This is the QA-GNN implementation of the entity linking procedure from KagNet. The code is taken from:
+https://github.com/michiyasunaga/qagnn/blob/main/utils/grounding.py, and then modified to match the format of our use case.
+'''
+
 from multiprocessing import Pool
 import spacy
 from spacy.matcher import Matcher
