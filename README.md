@@ -14,7 +14,7 @@
 <br>
 
 <p align="center">
-  <a href="https://arxiv.org/abs/2306.02871"><b>Paper</b></a><br>
+  <a href="https://aclanthology.org/2023.matching-1.1/"><b>Paper</b></a><br>
 </p>
 
 _______
